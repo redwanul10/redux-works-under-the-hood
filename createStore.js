@@ -2,9 +2,10 @@
 
 
 // Default action types
- const ActionTypes = {
+ export const ActionTypes = {
     INIT: "@REDUX_INIT" + Math.random(),
     REPLACE: "@REDUX_REPLACE" + Math.random(),
+    UNKNOWN: "@REDUX_UNKNOWN" + Math.random(),
  }
 
  /**
@@ -14,7 +15,7 @@
  * @returns {Store} that allows to read state, dispatch & subscribe
  */
 
-const createStore = (reducer,preloadedState) => {
+const createStore = (reducer,preloadedState,enhancer) => {
 
     let currentReducer = reducer;
     let currentState = preloadedState;
@@ -22,6 +23,12 @@ const createStore = (reducer,preloadedState) => {
     // Based on this "isDispatching" variable redux prevent us to call
     // subscribe, getState & dispatch method inside reducer
     let isDispatching = false
+
+
+    // If Middlewares are available then create store with middlewares
+    if(enhancer){
+      return  enhancer(createStore)(reducer,preloadedState)
+    }
 
     /**
      * simply returns current state from the store
@@ -42,7 +49,7 @@ const createStore = (reducer,preloadedState) => {
      * @param {Function} Invoke whenever the state changes
      * @returns {Function} A function for unsubscribe
      */
-    const subscribe = (listener) => {
+    const subscribe = (listener,depenciesFunc) => {
 
         if (isDispatching) {
             throw new Error('You may not call store.subscribe() while the reducer is executing')
@@ -50,11 +57,15 @@ const createStore = (reducer,preloadedState) => {
 
         let isSubscribed = true
 
+        if(depenciesFunc){
+            listener.depenciesFunc = depenciesFunc
+            console.log("depenc added")
+        }
         // stores the listener to invoke on every state changes 
         currentListeners.push(listener)
 
         // return a unsubscribe method
-        return unsubscribe = () => {
+        return function unsubscribe(){
 
             // prevent calling unsubscribe method more than once
             if (!isSubscribed) return
@@ -95,6 +106,9 @@ const createStore = (reducer,preloadedState) => {
         const listeners = currentListeners
         for (let i = 0; i < listeners.length; i++) {
             const listener = listeners[i]
+            if(listener.depenciesFunc){
+                console.log("found dependency",listener.depenciesFunc(currentState))
+            }
             listener()
         }
 
